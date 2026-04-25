@@ -3,6 +3,8 @@ from app.registry.metric_registry import MetricDefinition
 from app.services.query_service import compute_segment_breakdown
 import pandas as pd
 
+MIN_SEGMENT_DELTA = 0.001
+
 def run(
     df: pd.DataFrame,
     metric: MetricDefinition,
@@ -17,7 +19,7 @@ def run(
     concentrated_segments = []
 
     total_delta = abs(topline["absolute_delta"])
-    if total_delta == 0:
+    if total_delta < MIN_SEGMENT_DELTA:
         return CheckResult(
             check_name="segment_concentration",
             check_type=CheckType.business,
@@ -38,14 +40,14 @@ def run(
         )
 
         for segment in breakdown:
-            seg_delta = abs(segment["delta"])
+            seg_delta = abs(segment["contribution_delta"])
             contribution = (seg_delta / total_delta * 100) if total_delta > 0 else 0
             if contribution >= 30:
                 concentrated_segments.append({
                     "dimension": dimension,
                     "segment": segment["segment"],
                     "contribution_pct": round(contribution, 1),
-                    "delta": segment["delta"]
+                    "delta": segment["contribution_delta"]
                 })
                 evidence.append(
                     f"{dimension}={segment['segment']} contributed ~{contribution:.1f}% of total delta"
